@@ -7,7 +7,7 @@ use Signature
 enum COLOR = {black, white}
 enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
-enum MACHINE = {m1, m2, m3} 
+enum MACHINE = {m0, m1, m2, m3} 
 enum COMPUTATION = {c1, c2, c3}
 
 function color: MACHINE * COMPUTATION -> COLOR
@@ -34,6 +34,7 @@ rule InitializeMachine =
 				token(m,i) := undef	
 				color(m,i) := white
 				RegularMachineProgram(m,i)
+				SupervisorMachineProgram(m,i)
 			}
 		}
 	endpar
@@ -59,22 +60,23 @@ rule ForwardToken(token, m, i) = {
 rule RegularMachineProgram(m, i) = { 
 	ReactOnEvents(m, i)
 	if status(m, i) = passive and token(m, i) != undef then
-		//InitializeMachine(m, i) 
 		if color(m, i) = black then
 				ForwardToken(blackToken, Next(m), i)
 		else
 				ForwardToken(token(m, i), Next(m), i)
 }
 
-rule SupervisorMachineProgram = {
+rule SupervisorMachineProgram(m,i) = {
     ReactOnEvents(m, i)
-    if status(m, i) = passive and token(m, i) != undef then
-        if color(m, i) = white and token(m, i) = whiteToken then
-            ReportGlobalTermination
-        else
-            InitializeMachine(m, i)
-            ForwardToken(whiteToken, Next(m)) 
+    if m = m0 then
+    	if status(m, i) = passive and token(m, i) != undef then
+        	if color(m, i) = white and token(m, i) = whiteToken then
+            		ReportGlobalTermination
+        	else
+            		ForwardToken(whiteToken, Next(m)) 
 }
 
+rule ReportGlobalTermination =
+		print "terminated"
 
 
