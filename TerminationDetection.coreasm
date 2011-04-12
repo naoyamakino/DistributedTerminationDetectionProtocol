@@ -9,7 +9,6 @@ enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
 enum MACHINE = {m1, m2, m3} 
 enum COMPUTATION = {c1, c2, c3}
-//universe Agents = {eventReactor, regularController}
 
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
@@ -39,12 +38,6 @@ rule InitializeMachine =
 		}
 	endpar
 
-rule MainProgram = {
-	 extend MACHINE with m do
-    		extend COMPUTATION with c do
-    			program(regularController) := @RegularMachineProgram
-}
-
 rule ReactOnEvents(m, i) = {
 	if BlackTokenEvent(m, i) then
 		token(m,i) := blackToken
@@ -52,22 +45,25 @@ rule ReactOnEvents(m, i) = {
 		token(m, i) := whiteToken
 	if SendMessageEvent(m,i) then
 		color(m,i) := black
+	print color(m,i)
+	print token(m,i)
 }
 
 rule ForwardToken(token, m, i) = {
 	token(Next(m), i) := token
+	print token	
+	print m
+	print i
 }
 
 rule RegularMachineProgram(m, i) = { 
-	print "Hello World!"
 	ReactOnEvents(m, i)
 	if status(m, i) = passive and token(m, i) != undef then
 		//InitializeMachine(m, i) 
 		if color(m, i) = black then
-			ForwardToken(blackToken, Next(m), i)
+				ForwardToken(blackToken, Next(m), i)
 		else
-			ForwardToken(token(m, i), Next(m), i)
-	//		InitializeMachine(m, i)
+				ForwardToken(token(m, i), Next(m), i)
 }
 
 rule SupervisorMachineProgram = {
