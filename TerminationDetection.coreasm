@@ -3,6 +3,7 @@ CoreASM TerminationDetection
 use Standard
 use StandardPlugins
 use Signature
+use MathPlugin
 
 enum COLOR = {black, white}
 enum TOKEN = {blackToken, whiteToken}
@@ -31,10 +32,17 @@ rule InitializeMachine =
 	par
 		forall m in MACHINE do{
 			forall c in COMPUTATION do{
-				token(m,i) := undef	
-				color(m,i) := white
-				RegularMachineProgram(m,i)
-				SupervisorMachineProgram(m,i)
+				if random() > 0.5 then	
+					color(m,c) := white
+				else	
+					color(m,c) := black
+				if random() > 0.5 then		
+					status(m,c) := active
+				if random() > 0.5 then		
+					token(m,c) := blackToken
+				else		
+					token(m,c) := whiteToken
+				RegularMachineProgram(m,c)
 			}
 		}
 	endpar
@@ -52,9 +60,8 @@ rule ReactOnEvents(m, i) = {
 
 rule ForwardToken(token, m, i) = {
 	token(Next(m), i) := token
-	print token	
-	print m
-	print i
+	ptint color(m,i)
+	print status(m,i)
 }
 
 rule RegularMachineProgram(m, i) = { 
