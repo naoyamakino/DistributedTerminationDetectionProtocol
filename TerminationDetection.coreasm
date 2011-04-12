@@ -9,7 +9,7 @@ enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
 enum MACHINE = {m1, m2, m3} 
 enum COMPUTATION = {c1, c2, c3}
-universe Agents = {eventReactor, regularController}
+//universe Agents = {eventReactor, regularController}
 
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
@@ -21,23 +21,28 @@ function monitored SendMessageEvent: MACHINE * COMPUTATION -> BOOLEAN
                 
 init InitRule
 
-rule InitRule = {
-    //program(self) := @MainProgram
-    forall m in MACHINE do {
-    	forall c in COMPUTATION do {
-		print m
-		print c
-    		program(m, c) := @RegularMachineProgram
+rule InitRule = 
+	par
+    		extend Agents with controller do
+			program(controller) := @InitializeMachine
+    		Agents(self) := false
+	endpar
+
+rule InitializeMachine = 
+	par
+		forall m in MACHINE do{
+			forall c in COMPUTATION do{
+				token(m,i) := undef	
+				color(m,i) := white
+				RegularMachineProgram(m,i)
+			}
 		}
-	}
-}
+	endpar
 
 rule MainProgram = {
-//	print "Hello World!"
 	 extend MACHINE with m do
     		extend COMPUTATION with c do
-    			program(m, c) := @RegularMachineProgram
-//    program(self) := undef
+    			program(regularController) := @RegularMachineProgram
 }
 
 rule ReactOnEvents(m, i) = {
@@ -49,11 +54,6 @@ rule ReactOnEvents(m, i) = {
 		color(m,i) := black
 }
 
-rule InitializeMachine(m,i) = {
-	token(m,i) := undef	
-	color(m,i) := white
-}
-
 rule ForwardToken(token, m, i) = {
 	token(Next(m), i) := token
 }
@@ -62,15 +62,15 @@ rule RegularMachineProgram(m, i) = {
 	print "Hello World!"
 	ReactOnEvents(m, i)
 	if status(m, i) = passive and token(m, i) != undef then
-		InitializeMachine(m, i) 
+		//InitializeMachine(m, i) 
 		if color(m, i) = black then
 			ForwardToken(blackToken, Next(m), i)
 		else
 			ForwardToken(token(m, i), Next(m), i)
-			InitializeMachine(m, i)
+	//		InitializeMachine(m, i)
 }
 
-rule SupervisorMachineProgram(m, i) = {
+rule SupervisorMachineProgram = {
     ReactOnEvents(m, i)
     if status(m, i) = passive and token(m, i) != undef then
         if color(m, i) = white and token(m, i) = whiteToken then
