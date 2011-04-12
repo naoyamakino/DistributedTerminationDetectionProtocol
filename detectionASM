@@ -1,0 +1,38 @@
+ASM model
+//k is the number of computations 
+COLOR = {black, white} 
+TOKEN = {blackToken, whiteToken} 
+MACHINE
+COMPUTATION = {0... k} 
+
+color: MACHINE, COMPUTATION -> COLOR //color[MACHINE, COMPUTATION] 
+token: MACHINE, COMPUTATION-> TOKEN //token[MACHINE, COMPUTATION]
+static next: MACHINE -> MACHINE
+
+monitored Active: MACHINE -> BOOL
+monitored BlackTokenEvent,
+	WhiteTokenEvent,
+	SendMessageEvent: MACHINE -> BOOL
+
+ReactOnEvents(m: MACHINE, i: COMPUTATION) = 
+	if BlackTokenEvent(m, i) then //if black token event happens on m machine and i compt
+		token(m, i) := blackToken //then it changes token of i compt and m machine to black
+	if WhiteTokenEvent(m, i) then
+		token(m, i) := whiteToken
+	if SendMsgEevnt(m, i) then
+		color(m, i) := black
+
+InitializeMachine(m: MACHINE, i: COMPUTATION) = 
+	token(m, i) := undef
+	color(m, i) := white
+
+RegularMachineProgram(m: MACHINE, i: COMPUTATION) = 
+	ReactOnEvents(m, i)
+	if !Active(m, i) ^ token(m, i) != undef then
+		InitializeMachine(m, i) 
+		if color(m, i) = black then
+			ForwardToken(blackToken, next(m))
+		else
+			ForwardToken(token(m, i), next(m))
+			InitializeMachine(m, i)
+
