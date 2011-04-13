@@ -10,10 +10,10 @@ enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
 enum MACHINE = {m0, m1, m2} 
 enum COMPUTATION = {c1}
-universe Agents = {protocol, activation, p}
+universe Agents = {protocol, activation, p, supervisor}
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
-function static Next: MACHINE -> MACHINE
+//function static Next: MACHINE -> MACHINE
 function status: MACHINE * COMPUTATION -> STATUS
                 
 init InitRule
@@ -31,21 +31,30 @@ rule InitRule =
 		}
 		//initilize agents
 			program(protocol) := @RunStimulation
-			program(activation) := @ChangeStatus
-			program(p) := @makePassive
+			program(supervisor) := @RunSupervisor
+			//program(activation) := @ChangeStatus
+			//program(p) := @makePassive
 			
     		Agents(self) := false
 	endpar
 
-rule ForwardToken(t, m, i) = {
-	token(Next(m), i) := t
+rule ForwardToken(t, m, c) = {
+	seq 
+		print "token: " + t + " machine: " + m + " computation: " + c
+		if m = m0 then token(m1, c) := t
+		if m = m1 then token(m2, c) := t 
+		if m = m2 then token(m0, c) := t 
 }
 
 rule RunStimulation = { 
 	forall m in MACHINE do 
 		forall c in COMPUTATION do
-			if m = m0 then SupervisorMachineProgram(m,c) else RegularMachineProgram(m,c)
+			RegularMachineProgram(m,c)
 
+}
+rule RunSupervisor = { 
+	forall c in COMPUTATION do
+		SupervisorMachineProgram(m0, c)
 }
 rule InitializeToken(m, c)= {
 	token(m,c) := undef
@@ -53,20 +62,19 @@ rule InitializeToken(m, c)= {
 }
 
 rule RegularMachineProgram(m,c) ={
-	print "machine: " + m
-	print "next: " + Next(m)
-		
-	print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c)  	
+	print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m + " computation: " + c   	
 	if status(m,c) = passive and token(m,c) != undef then
 	{
-		if color(m,c) = black then	
-			ForwardToken(blackToken, Next(m), c)
-			if token(m,c) = whiteToken then color(m,c) := white
-		else	
-			ForwardToken(token(m,i), Next(m), c)
- 		InitializeToken(m,c)
+			if color(m,c) = black then	
+				ForwardToken(blackToken, m, c)
+				if token(m,c) = whiteToken then color(m,c) := white
+			else
+			{
+				print "token from reg: " + token(m,c) 	
+				ForwardToken(token(m,c), m, c)
+			}
+ 			InitializeToken(m,c)
 	}
-
 }
 
 rule SendMessage(m,c) = {
@@ -77,15 +85,16 @@ rule SendMessage(m,c) = {
 }
 
 rule SupervisorMachineProgram(m,c) ={
-	print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c)  	
+	print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m
 	if status(m,c) = passive and token(m,c) != undef then
 	{	
-		if color(m,c) = white and token(m,c) = white then	
+		if color(m,c) = white and token(m,c) = whiteToken then	
 			ReportGlobalTermination
 		else 
 		{
-			ForwardToken(whiteToken, Next(m), i)
-			InitializeToken(m,c)
+			seq
+				ForwardToken(whiteToken, m, c)
+				InitializeToken(m,c)
 		}
 	}
 } 
@@ -107,4 +116,14 @@ rule ReportGlobalTermination =
 {
 		print "terminated"
 		program(self) := undef
+}
+
+rule Next(m) ={
+	return value in 
+		value := m
+	//return value in
+	//{
+		//value := m1
+		
+	//} 
 }
