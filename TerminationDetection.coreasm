@@ -23,67 +23,66 @@ init InitRule
 
 rule InitRule = 
 	par
-    		extend Agents with controller do
-			program(controller) := @InitializeMachine
+		forall c in COMPUTATION do{
+			forall m in MACHINE do{
+				color(m,c) := white
+				status(m,c) := passive
+				if m = m0 then		
+					token(m,c) := blackToken else token(m,c) := undef
+			}
+		}
+		//initilize agents
+		extend Agents with protocol do
+			program(protocol) := @RunStimulation
+		extend Agents with terminationDetection do
+			program(terminationDetection) := @DetectTermination
     		Agents(self) := false
 	endpar
 
-rule InitializeMachine = 
-	par
-		forall m in MACHINE do{
-			forall c in COMPUTATION do{
-				if random() > 0.5 then	
-					color(m,c) := white
-				else	
-					color(m,c) := black
-				if random() > 0.5 then		
-					status(m,c) := active
-				if random() > 0.5 then		
-					token(m,c) := blackToken
-				else		
-					token(m,c) := whiteToken
-				RegularMachineProgram(m,c)
-			}
-		}
-	endpar
-
-rule ReactOnEvents(m, i) = {
-	if BlackTokenEvent(m, i) then
-		token(m,i) := blackToken
-	if WhiteTokenEvent(m, i) then	
-		token(m, i) := whiteToken
-	if SendMessageEvent(m,i) then
-		color(m,i) := black
-	print color(m,i)
-	print token(m,i)
+rule ForwardToken(t, m, i) = {
+	token(Next(m), i) := t
 }
 
-rule ForwardToken(token, m, i) = {
-	token(Next(m), i) := token
-	ptint color(m,i)
-	print status(m,i)
+rule RunStimulation = 
+	forall m in MACHINE do 
+		forall c in COMPUTATION do 
+			if m = m0 then SupervisorMachineProgram else RegularMachineProgram(m,c)
+
+rule RegularMachineProgram(m,c) ={
+	if random() < 0.5 then generateComputation(m,c)
+	if random() > 0.5 then SendMessage(m,c)
+	if status(m,c) = passive and token(m,c) != undef then
+		if color(m,c) = black then	
+			ForwardToken(blackToken, Next(m), c)
+			if token(m,c) = whiteToken then color(m,c) := white
+		else	
+			ForwardToken(token(m,i), Next(m), c)
+ 
 }
 
-rule RegularMachineProgram(m, i) = { 
-	ReactOnEvents(m, i)
-	if status(m, i) = passive and token(m, i) != undef then
-		if color(m, i) = black then
-				ForwardToken(blackToken, Next(m), i)
-		else
-				ForwardToken(token(m, i), Next(m), i)
+rule generateComputation(m,c) = 
+	status(m,c) := active 
+
+rule SendMessage(m,c) = {
+	if status(m, c) = active then
+		color(m, c) := black
+		print "machine: " + m
+		print "computation: " + c
+		print color(m,c)
+		print status(m,c)
+		
 }
 
-rule SupervisorMachineProgram(m,i) = {
-    ReactOnEvents(m, i)
-    if m = m0 then
-    	if status(m, i) = passive and token(m, i) != undef then
-        	if color(m, i) = white and token(m, i) = whiteToken then
-            		ReportGlobalTermination
-        	else
-            		ForwardToken(whiteToken, Next(m)) 
-}
-
+rule SupervisorMachineProgram =
+	print "" 
+    	
+rule DetectTermination = 
+	print ""
+	
 rule ReportGlobalTermination =
 		print "terminated"
 
-
+//rule startTokens = { 
+//	forall c in COMPUTATION do
+	
+//}
