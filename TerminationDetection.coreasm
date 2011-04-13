@@ -8,8 +8,8 @@ use MathPlugin
 enum COLOR = {black, white}
 enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
-enum MACHINE = {m0, m1, m2, m3} 
-enum COMPUTATION = {c1, c2, c3}
+enum MACHINE = {m0, m1} 
+enum COMPUTATION = {c1}
 
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
@@ -28,14 +28,16 @@ rule InitRule =
 				color(m,c) := white
 				status(m,c) := passive
 				if m = m0 then		
-					token(m,c) := blackToken else token(m,c) := undef
+					token(m,c) := blackToken 
+				else token(m,c) := undef
 			}
 		}
 		//initilize agents
 		extend Agents with protocol do
 			program(protocol) := @RunStimulation
-		extend Agents with terminationDetection do
-			program(terminationDetection) := @DetectTermination
+		extend Agents with activation do
+			program(activation) := @ChangeStatus
+			program(activation) := @makePassive
     		Agents(self) := false
 	endpar
 
@@ -43,21 +45,27 @@ rule ForwardToken(t, m, i) = {
 	token(Next(m), i) := t
 }
 
-rule RunStimulation = 
+rule RunStimulation = { 
 	forall m in MACHINE do 
 		forall c in COMPUTATION do 
-			if m = m0 then SupervisorMachineProgram else RegularMachineProgram(m,c)
+			if m = m0 then SupervisorMachineProgram(m,c) else RegularMachineProgram(m,c)
+
+}
+rule InitializeToken(m, c)= {
+	token(m,c) := undef
+	color(m,c) := white
+}
 
 rule RegularMachineProgram(m,c) ={
-	if random() < 0.5 then generateComputation(m,c)
-	if random() > 0.5 then SendMessage(m,c)
 	if status(m,c) = passive and token(m,c) != undef then
+	{
 		if color(m,c) = black then	
 			ForwardToken(blackToken, Next(m), c)
 			if token(m,c) = whiteToken then color(m,c) := white
 		else	
 			ForwardToken(token(m,i), Next(m), c)
- 
+ 		InitializeToken(m,c)
+	}	
 }
 
 rule generateComputation(m,c) = 
@@ -66,23 +74,36 @@ rule generateComputation(m,c) =
 rule SendMessage(m,c) = {
 	if status(m, c) = active then
 		color(m, c) := black
-		print "machine: " + m
-		print "computation: " + c
-		print color(m,c)
-		print status(m,c)
-		
+		choose receiver in MACHINE do
+			status(receiver, c) := active 
 }
 
-rule SupervisorMachineProgram =
-	print "" 
+rule SupervisorMachineProgram(m,c) ={
+	if status(m,c) = passive and token(m,c) != undef then	
+		if color(m,c) = white and token(m,c) = white then	
+			ReportGlobalTermination
+		else 
+		{
+			ForwardToken(whiteToken, Next(m), i)
+			InitializeToken(m,c)
+		}
+} 
     	
-rule DetectTermination = 
-	print ""
-	
-rule ReportGlobalTermination =
-		print "terminated"
+rule ChangeStatus ={
+	choose m in MACHINE do{ 
+	choose c in COMPUTATION do{ 
+		if random() < 0.5 then generateComputation(m,c)
+		if random() > 0.5 then SendMessage(m,c)
+	}
+	}
+}
+rule makePassive =
+	choose m in MACHINE do
+	choose c in COMPUTATION do
+	if random() > 0.3 then status(m,c) := passive
 
-//rule startTokens = { 
-//	forall c in COMPUTATION do
-	
-//}
+rule ReportGlobalTermination =
+{
+		print "terminated"
+		program(self) := undef
+}
