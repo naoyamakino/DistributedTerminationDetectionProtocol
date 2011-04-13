@@ -43,7 +43,7 @@ rule ForwardToken(t, m, i) = {
 
 rule RunStimulation = { 
 	forall m in MACHINE do 
-		forall c in COMPUTATION do 
+		forall c in COMPUTATION do
 			if m = m0 then SupervisorMachineProgram(m,c) else RegularMachineProgram(m,c)
 
 }
@@ -53,6 +53,9 @@ rule InitializeToken(m, c)= {
 }
 
 rule RegularMachineProgram(m,c) ={
+	print "machine: " + m
+	print "next: " + Next(m)
+		
 	print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c)  	
 	if status(m,c) = passive and token(m,c) != undef then
 	{
@@ -65,9 +68,6 @@ rule RegularMachineProgram(m,c) ={
 	}
 
 }
-
-rule generateComputation(m,c) = 
-	status(m,c) := active 
 
 rule SendMessage(m,c) = {
 	if status(m, c) = active then
@@ -87,20 +87,16 @@ rule SupervisorMachineProgram(m,c) ={
 			ForwardToken(whiteToken, Next(m), i)
 			InitializeToken(m,c)
 		}
-
 	}
 } 
     	
 rule ChangeStatus ={
-	choose m in MACHINE do{ 
-	choose c in COMPUTATION do{
-		par 
-			if random() > 0.8 then generateComputation(m,c)
+	choose m in MACHINE do 
+		choose c in COMPUTATION do
 			if random() > 0.75 then SendMessage(m,c)
-		endpar
-	}
-	}
+		
 }
+	
 rule makePassive ={
 	print "makepassive"
 	choose m in MACHINE do
