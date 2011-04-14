@@ -8,12 +8,11 @@ use MathPlugin
 enum COLOR = {black, white}
 enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
-enum MACHINE = {m0, m1, m2,m3, m4, m5, m6, m7} 
-enum COMPUTATION = {c1, c2,c3}
+enum MACHINE = {m0, m1, m2} 
+enum COMPUTATION = {c1,c2}
 universe Agents = {protocol, activation, p, supervisor}
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
-//function static Next: MACHINE -> MACHINE
 function status: MACHINE * COMPUTATION -> STATUS
                 
 init InitRule
@@ -23,39 +22,31 @@ rule InitRule =
 		forall c in COMPUTATION do{
 			forall m in MACHINE do{
 				color(m,c) := white
-				
 				if random() > 0.5 then status(m,c) := passive else status(m,c) := active
+				//status(m,c) := passive
 				if m = m0 then		
 					token(m,c) := blackToken 
 				else token(m,c) := undef
 			}
 		}
 		//initilize agents
-			program(protocol) := @RunStimulation
-			program(supervisor) := @RunSupervisor
-			program(activation) := @ChangeStatus
-			program(p) := @makePassive
+		program(protocol) := @RunStimulation
+		program(supervisor) := @RunSupervisor
+		program(activation) := @ChangeStatus
 			
     		Agents(self) := false
 	endpar
 
 rule ForwardToken(t, m, c) = { 
-		print "token: " + t + " machine: " + m + " computation: " + c
 		if m = m0 then token(m1, c) := t
 		if m = m1 then token(m2, c) := t 
-		if m = m2 then token(m3, c) := t 
-		if m = m3 then token(m4, c) := t
-		if m = m4 then token(m5, c) := t 
-		if m = m5 then token(m6, c) := t 
-		if m = m6 then token(m7, c) := t 
-		if m = m7 then token(m0, c) := t 
+		if m = m2 then token(m0, c) := t 
 }
 
 rule RunStimulation = { 
 	forall m in MACHINE do 
-		if m != m0 then
-			forall c in COMPUTATION do
-				RegularMachineProgram(m,c)
+		forall c in COMPUTATION do
+			RegularMachineProgram(m,c)
 
 }
 rule RunSupervisor = { 
@@ -99,15 +90,12 @@ rule SupervisorMachineProgram(m,c) ={
 
 	if status(m,c) = passive and token(m,c) != undef then
 	{	
-		if color(m,c) = white and token(m,c) = whiteToken then{	
-			token(m,c) := undef
-			if token(m,c1) = undef and token(m,c2) = undef and token(m,c3) = undef then
-				ReportGlobalTermination(c)
-		}
+		print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m + " computation: " + c
+		if color(m,c) = white and token(m,c) = whiteToken then
+				ReportGlobalTermination
 		else 
 		{
 			seq
-				print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m
 				ForwardToken(whiteToken, m, c)
 				InitializeToken(m,c)
 		}
@@ -115,9 +103,15 @@ rule SupervisorMachineProgram(m,c) ={
 } 
     	
 rule ChangeStatus ={
-	choose m in MACHINE do 
-		choose c in COMPUTATION do
-			if random() > 0.75 then SendMessage(m,c)
+	if random() < 0.1 then{
+	choose m in MACHINE do{ 
+		choose c in COMPUTATION do{
+			seq 
+				SendMessage(m,c)
+				makePassive
+		}
+	}
+	}
 }
 	
 rule makePassive ={
@@ -126,14 +120,12 @@ rule makePassive ={
 		choose c in COMPUTATION do
 			status(m,c) := passive
 }
-rule ReportGlobalTermination(c) =
+rule ReportGlobalTermination =
 {
-		print c + " terminated"
+		print "******************terminated******************"
 		program(self) := undef
 		program(protocol) := undef
 		program(supervisor) := undef
 		program(activation) := undef
-		program(p) := undef
-
 }
 
