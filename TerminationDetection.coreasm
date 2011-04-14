@@ -32,8 +32,8 @@ rule InitRule =
 		//initilize agents
 			program(protocol) := @RunStimulation
 			program(supervisor) := @RunSupervisor
-			//program(activation) := @ChangeStatus
-			//program(p) := @makePassive
+			program(activation) := @ChangeStatus
+			program(p) := @makePassive
 			
     		Agents(self) := false
 	endpar
@@ -61,16 +61,19 @@ rule InitializeToken(m, c)= {
 }
 
 rule RegularMachineProgram(m,c) ={
-	print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m + " computation: " + c   	
+
 	if status(m,c) = passive and token(m,c) != undef then
 	{
 		seq
-			if color(m,c) = black then	
+			if color(m,c) = black then
+			{	
+				print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m + " computation: " + c   	
 				ForwardToken(blackToken, m, c)
 				if token(m,c) = whiteToken then color(m,c) := white
+			}
 			else
 			{
-				print "token from reg: " + token(m,c) 	
+				print "regularMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m + " computation: " + c   	
 				ForwardToken(token(m,c), m, c)
 			}
  			InitializeToken(m,c)
@@ -86,7 +89,7 @@ rule SendMessage(m,c) = {
 }
 
 rule SupervisorMachineProgram(m,c) ={
-	print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m
+
 	if status(m,c) = passive and token(m,c) != undef then
 	{	
 		if color(m,c) = white and token(m,c) = whiteToken then	
@@ -94,7 +97,7 @@ rule SupervisorMachineProgram(m,c) ={
 		else 
 		{
 			seq
-				print "token from supervisor: " + token(m,c) 	
+				print "supervisorMachine: color= " + color(m,c) + " status= " +status(m,c) + " token= " + token(m,c) + " machine: " + m
 				ForwardToken(whiteToken, m, c)
 				InitializeToken(m,c)
 		}
@@ -117,5 +120,10 @@ rule ReportGlobalTermination =
 {
 		print "terminated"
 		program(self) := undef
+		program(protocol) := undef
+		program(supervisor) := undef
+		program(activation) := undef
+		program(p) := undef
+
 }
 
