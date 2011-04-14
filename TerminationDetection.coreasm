@@ -8,8 +8,8 @@ use MathPlugin
 enum COLOR = {black, white}
 enum TOKEN = {blackToken, whiteToken}
 enum STATUS = {active, passive}
-enum MACHINE = {m0, m1, m2} 
-enum COMPUTATION = {c1}
+enum MACHINE = {m0, m1, m2,m3, m4, m5, m6, m7} 
+enum COMPUTATION = {c1, c2,c3}
 universe Agents = {protocol, activation, p, supervisor}
 function color: MACHINE * COMPUTATION -> COLOR
 function token: MACHINE * COMPUTATION -> TOKEN
@@ -23,7 +23,8 @@ rule InitRule =
 		forall c in COMPUTATION do{
 			forall m in MACHINE do{
 				color(m,c) := white
-				status(m,c) := passive
+				
+				if random() > 0.5 then status(m,c) := passive else status(m,c) := active
 				if m = m0 then		
 					token(m,c) := blackToken 
 				else token(m,c) := undef
@@ -42,13 +43,19 @@ rule ForwardToken(t, m, c) = {
 		print "token: " + t + " machine: " + m + " computation: " + c
 		if m = m0 then token(m1, c) := t
 		if m = m1 then token(m2, c) := t 
-		if m = m2 then token(m0, c) := t 
+		if m = m2 then token(m3, c) := t 
+		if m = m3 then token(m4, c) := t
+		if m = m4 then token(m5, c) := t 
+		if m = m5 then token(m6, c) := t 
+		if m = m6 then token(m7, c) := t 
+		if m = m7 then token(m0, c) := t 
 }
 
 rule RunStimulation = { 
 	forall m in MACHINE do 
-		forall c in COMPUTATION do
-			RegularMachineProgram(m,c)
+		if m != m0 then
+			forall c in COMPUTATION do
+				RegularMachineProgram(m,c)
 
 }
 rule RunSupervisor = { 
@@ -92,8 +99,11 @@ rule SupervisorMachineProgram(m,c) ={
 
 	if status(m,c) = passive and token(m,c) != undef then
 	{	
-		if color(m,c) = white and token(m,c) = whiteToken then	
-			ReportGlobalTermination
+		if color(m,c) = white and token(m,c) = whiteToken then{	
+			token(m,c) := undef
+			if token(m,c1) = undef and token(m,c2) = undef and token(m,c3) = undef then
+				ReportGlobalTermination(c)
+		}
 		else 
 		{
 			seq
@@ -116,9 +126,9 @@ rule makePassive ={
 		choose c in COMPUTATION do
 			status(m,c) := passive
 }
-rule ReportGlobalTermination =
+rule ReportGlobalTermination(c) =
 {
-		print "terminated"
+		print c + " terminated"
 		program(self) := undef
 		program(protocol) := undef
 		program(supervisor) := undef
