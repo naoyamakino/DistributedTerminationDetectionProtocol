@@ -1,33 +1,31 @@
-ASM model
+															CMPT 475 Assignment #4									Vishal Lal 301065595 vla22@sfu.ca
+																													Naoya Makino 
+																-ASM model-
 //k is the number of computations 
 COLOR = {black, white} 
+STATUS = {passive, active}
 TOKEN = {blackToken, whiteToken} 
-MACHINE
+MACHINE = {0 ... n}
 COMPUTATION = {0... k} 
 
 color: MACHINE, COMPUTATION -> COLOR //color[MACHINE, COMPUTATION] 
 token: MACHINE, COMPUTATION-> TOKEN //token[MACHINE, COMPUTATION]
 static next: MACHINE -> MACHINE
 
-monitored Active: MACHINE -> BOOL
-monitored BlackTokenEvent,
-	WhiteTokenEvent,
-	SendMessageEvent: MACHINE -> BOOL
-
-ReactOnEvents(m: MACHINE, i: COMPUTATION) = 
-	if BlackTokenEvent(m, i) then //if black token event happens on m machine and i compt
-		token(m, i) := blackToken //then it changes token of i compt and m machine to black
-	if WhiteTokenEvent(m, i) then
-		token(m, i) := whiteToken
-	if SendMsgEevnt(m, i) then
-		color(m, i) := black
+for all m in MACHINE do
+	for all c in COMPUTATION do
+		color(m,c) := white
+for all c in COMPUTATION do
+	SupervisorMachineProgram(m0, c) and token(m0,c) := blackToken
+	for all m in MACHINE do
+		if m != m0
+			RegularMachineProgram(m,c)
 
 InitializeMachine(m: MACHINE, i: COMPUTATION) = 
 	token(m, i) := undef
 	color(m, i) := white
 
 RegularMachineProgram(m: MACHINE, i: COMPUTATION) = 
-	ReactOnEvents(m, i)
 	if !Active(m, i) ^ token(m, i) != undef then
 		InitializeMachine(m, i) 
 		if color(m, i) = black then
@@ -35,4 +33,41 @@ RegularMachineProgram(m: MACHINE, i: COMPUTATION) =
 		else
 			ForwardToken(token(m, i), next(m))
 			InitializeMachine(m, i)
+			
+SupervisorMachineProgram(m: MACHINE, i: COMPUTATION) =
+	if !Active(m,i) ^ token(m,i) != undef then
+		if color(m,i) = white ^ token(m,i) = whiteToken then
+			ReportGlobalTermination
+		else
+			InitializeMachine(m,i)
+			ForwardToken(whiteToken, next(m), c)	
+
+ForwardToken(token, m, c) =
+	token(m,c) := token
+
+makePassive =
+	choose m in MACHINE do
+		choose c in COMPUTATION do
+			status(m,c) := passive
+			
+
+
+																-DOCUMENTATION-			
+			
+- Event mechanisms-
+		-We randomly choose an active machine to become passive
+		-We randomly select an active machine to send a message to another machine, upon reciept of this message the recieving machine was made active
+		-Upon reciept of a whiteToken through a propogation the compuation is deemed done and after all compuations declare they are done 
+		 GlobalTermination is issued	
+		-When a black token is recieved by a RegularMachine then depending on its color and the color of the token it may change the color of the token
+		 but regardless it's own color is then made white
+		-When the SupervisorMachine recieves a blackToken it creates a new whiteToken and sends that along or terminates the detection process now that 		 we've recieved confirmation that the computers along the path are all passive
+		
+- Why it works -
+	The reason we believe that our protocol works is that it attempts to model every aspect of the system in a reasonable manner. It seperates modular 		parts of the system so that they may work concurrently in parallel rather than only concurrently. This way certain events may occur while the probe 	is being propogated around the circular arrangement of machines. Through this we are able to model a certain sense of realism rather than have 
+	events occur in a concurrent manner they are able to happen in parallel.
+			
+					
+- How to test it -
+	Basically the number of machines and computations has been defined all a person needs to do is run it like a normal coreasm file. When run various 		outputs will give feedback as to what is happening with a final termination message indicating completion. The number of machines we used was # with 		# number of computations aswell.
 
